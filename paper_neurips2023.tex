@@ -1,0 +1,126 @@
+\documentclass{article}
+
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[    % For using .bib file
+backend=biber,
+style=alphabetic,
+sorting=ynt
+]{biblatex}
+
+\addbibresource{references.bib}
+
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2023
+
+
+% ready for submission
+\usepackage[final]{neurips_2023}
+
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+%     \usepackage[preprint]{neurips_2023}
+
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+    % \usepackage[final]{neurips_2023}
+
+
+% to avoid loading the natbib package, add option nonatbib:
+   % \usepackage[nonatbib]{neurips_2023}
+
+
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+\usepackage{graphicx}
+
+
+\title{Comparing Perceptual Quality vs. Pixel Loss on a Novel Video Super-Resolution Method}
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+
+\author{
+  Chad Weatherly \\
+  Department of Computer Science \\
+  University of Houston \\
+  Houston, TX, USA \\
+  \texttt{cdweathe@central.uh.edu} \\
+  % examples of more authors
+  \And
+  Paramjit S. Kainth \\
+  Department of Mechanical Engineering \\
+  University of Houston \\
+  Houston, TX, USA \\
+  \texttt{pskainth@central.uh.edu} \\
+  \And
+  Abhigna Sowgandhika Vadlamudi \\
+  Department of Computer Science \\
+  University of Houston \\
+  Houston, TX, USA \\
+  \texttt{avadlam2@central.uh.edu} \\
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+}
+
+\begin{document}
+
+\maketitle
+
+% \begin{abstract}
+ % Will be used when we convert this to our final paper
+% \end{abstract}
+
+\section{Introduction}
+
+ Within the last decade, deep learning (DL) has been used in an attempt to solve the problem of Single Image Super-Resolution (SISR), which takes a low resolution (LR) image and attempts to construct a corresponding high resolution (HR) image. This problem was introduced to the mainstream with NVIDIA’s introduction of Deep Learning Super-Sampling (DLSS) in their GPU’s for playing video games. DLSS is more of a Video Super-Resolution (VSR) task, which gives more complexity to the SISR issue by introducing inter-frame information. In the video game landscape, there is currently a drive to have games played at a high frame rate and with high resolution and video quality. This is very computationally expensive. Improvements have been added every year or so since its inception in 2019. AMD and Intel have since introduced their own rival version of this type of model software, Fidelity SuperResolution (FSR) and XeSS, respectively, demonstrating the growth in this field in the past 3-4 years. The DLSS problem can also be transposed to other fields besides video games, such as “medical imagery reconstruction…remote sensing…panorama video super-resolution…surveillance systems…high-definition television” \cite{liu_video_2022}. \\ % These two lines are used for doing new paragraph
+
+\subsection{Prior Work}
+ 
+Up until this point, there have been a few notable papers that have introduced new architectures to the field, based on other DL structures \cite{chan_basicvsr_2021}, \cite{chan_basicvsr_2022}, \cite{liang_recurrent_nodate}, \cite{rota_enhancing_2023}, with most all papers using similar datasets like Vimeo-90K \cite{xue_video_2019} and REDS \cite{nah_ntire_2021}. Notably, significant improvements have been found by introducing deformable convolutions \cite{dai_deformable_2016}, but most improvements come by training models to reduce pixel-loss functions, which may not create images that look good to the human eye. Perceptual Quality was introduced as a metric for image/video restoration problems \cite{johnson_perceptual_2016}, \cite{zhang_unreasonable_2018}, which aims for a chosen model architecture to have similar feature maps to those of other state-of-the-art (SOTA) image/CNN models, thereby enhancing perceptual quality. To explain this concretely, imagine a new model that needs to be trained for a VSR task. Given a low-resolution (LR) frame/image, it will try to create a corresponding high-resolution (HR) frame.  This is done by passing both the ground truth and predicted HR frame through a given model that performs well on image-related tasks (VGG, ImageNet, ResNet, ...). The loss measures the difference between the activation maps created by passing both frames through this model. The idea is that if two images are percecptually similar, they will "look" similar to a model that performs well on extracting features from images, i.e. the goal is for the hidden features of two images to be similar, instead of just a pixel-to-pixel recreation. \\
+
+Frustratingly, the training process is little emphasized in current SOTA VSR models, which is bizarre, as pixel-loss functions (like MSE) don’t capture the problem in its entirety, making the problem ill-posed. In this project, the aim is to assess how adjusting the training process to use perceptual loss might affect the final performance of VSR models. This projects strives to train a novel VSR model, first on pixel-loss metrics, second using perceptual quality. \\ 
+
+\section{Problem Statement}
+
+Given this background, can we create a simple VSR model and compare its capabilities when trained both on pixel-loss (MSE) and perceptual loss?
+
+\section{Technical Approach}
+
+Due to the technical and time constraints of a class project, we propose to create our own network similar to the one used by Claudio et al. \cite{rota_enhancing_2023}, but with a smaller number of parameters to reduce training compute. We would like to implement an encoder/decoder diffusion approach, similar to a latent diffusion model \cite{rombach_high-resolution_2022}, where the encoder takes in 5 frames (as it will be a video), and the middle frame of these 5 is the one we wish to recreate in HR. The latent space would of course be a 2D noise frame and conditioned on the 5 LR counterparts of the HR image. Also, instead of having regular convolutions, we will use a mixture of deformable and regular convolutional layers. \\
+
+In training, the encoder and decoder are both trained as one continuous model, but in testing, the decoder will receive a randomly generated noisy image and the LR frame of a video, with the goal of creating a HR counterpart of that LR frame. When comparing the two models trained on different loss function, the common metrics for measuring are Peak Signal-to-Noise Ratio (PSNR) and Structural Similarity Index (SSIM). For data, we plan on using the previously mentioned REDS-v7 dataset \cite{nah_ntire_2021} and possibly incorporating the Vimeo-90K dataset \cite{xue_video_2019}. \\
+
+\section{Preliminary Results}
+
+Currently, we are still in the process of building the model and gathering the data. Preparing the data takes the most amount of time, and we are still in this process. Therefore, we have no preliminary results at this time. \\
+\\
+
+\printbibliography % Prints all references cited using \cite{} in alphabetical order
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\end{document}
