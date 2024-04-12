@@ -87,7 +87,24 @@ class diffusion_vsr(nn.Module):
         self.avgpool1 = nn.AvgPool1d(kernel_size=226436,
                                      stride=1,
                                      padding=1)
+        self.conv1 = nn.Conv2d(in_channels=3,
+                               out_channels=3,
+                               kernel_size=3,
+                               stride=1,
+                               padding=1)
         self.relu1 = nn.ReLU()
+        self.conv2 = nn.Conv2d(in_channels=3,
+                               out_channels=3,
+                               kernel_size=3,
+                               stride=1,
+                               padding=1)
+        self.relu2 = nn.ReLU()
+        self.conv3 = nn.Conv2d(in_channels=3,
+                               out_channels=3,
+                               kernel_size=3,
+                               stride=1,
+                               padding=1)
+        self.relu3 = nn.ReLU()
 
     def cosine_beta_schedule(self, timesteps, s):
         """
@@ -149,6 +166,10 @@ class diffusion_vsr(nn.Module):
         # print(x.size())
         x = x.reshape(3, 720, 1280)
         x = (0.5 * x) + (0.5 * norm_hr_noise)
+        # perform convolutions
+        x = self.relu1(self.conv1(x))
+        x = self.relu2(self.conv2(x))
+        x = self.relu3(self.conv3(x))
         x = torch.clamp(x, 0, 1)
         x = 255.0 * x
         return x

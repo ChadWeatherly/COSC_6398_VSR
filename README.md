@@ -12,7 +12,7 @@
 
 ```bash
 >>> conda env create -f environment.yml
->>> conda activate pytorch_ldm_vsr
+>>> conda activate pytorch_vsr
 ```
 
 5. Now, when working on the project, you'll have an environment that is exactly the same as mine, meaning all the packages are exactly the same.
