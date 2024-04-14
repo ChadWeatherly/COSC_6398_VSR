@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -9,42 +10,44 @@ class hr_feature_extractor(nn.Module):
         # Define two 3D convolutional layers and max pooling layers
 
         # Layer 1: 2D Convolution
-        # Input: (3, 720, 1280) -> Output: (16, 360, 640)
-        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=2, padding=1)
-        self.pool1 = nn.MaxPool2d(kernel_size=3, stride=1)  # Output: (16, 180, 320)
+        # Input: (1, 64, 64) -> Output: (8, 64, 64)
+        self.conv1 = nn.Conv2d(1, 8, kernel_size=3, stride=1, padding=2)
         self.relu1 = nn.ReLU()
 
         # Layer 2: 2D Convolution
-        # Input: (16, 180, 320) -> Output: (32, 90, 160)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1)
+        # Input: (8, 64, 64) -> Output: (16, 33, 33)
+        self.conv2 = nn.Conv2d(8, 16, kernel_size=3, stride=1, padding=1)
+        self.maxpool1 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.relu2 = nn.ReLU()
 
     def forward(self, x):
         x = self.relu1(self.conv1(x))
-        x = self.pool1(x)
-        x = self.relu2(self.conv2(x))
+        x = self.relu2(self.maxpool1(self.conv2(x)))
+        # print(x.size())
         return x
 
 
 class lr_feature_extractor(nn.Module):
     def __init__(self):
         super(lr_feature_extractor, self).__init__()
-        # Define three 3D convolutional layers and max pooling layers
+        # Define three 2D convolutional layers and max pooling layers
 
         # Layer 1: 3D Convolution
-        # Input: (3, 2, 720, 1280) -> Output: (16, 1, 360, 640)
-        self.conv1 = nn.Conv3d(3, 16, kernel_size=(2, 3, 3), stride=(1, 2, 2), padding=(0, 1, 1))
+        # Input: (1, 5, 32, 32) -> Output: (8, 5, 32, 32)
+        self.conv1 = nn.Conv3d(1, 8, kernel_size=3, stride=1, padding=1)
         self.relu1 = nn.ReLU()
 
         # Layer 2: 3D Convolution
-        # Input: (16, 1, 360, 640) -> Output: (32, 1, 180, 320)
-        self.conv2 = nn.Conv3d(16, 32, kernel_size=(1, 3, 3), stride=(1, 1, 1), padding=(0, 1, 1))
+        # Input: (8, 5, 32, 32) -> Output: (32, 6, 14, 14)
+        self.conv2 = nn.Conv3d(8, 32, kernel_size=3, stride=1, padding=1)
+        self.pool1 = nn.MaxPool3d(kernel_size=(2, 2, 2), stride=(1, 2, 2), padding=(1, 0, 0))
         self.relu2 = nn.ReLU()
 
     def forward(self, x):
         # Pass the input through the convolutional layers with ReLU activations
         x = self.relu1(self.conv1(x))
-        x = self.relu2(self.conv2(x))
+        # print(x.size())
+        x = self.relu2(self.pool1(self.conv2(x)))
         # print(x.size())
 
         return x
@@ -57,16 +60,20 @@ class positional_encoder(nn.Module):
         self.fc1 = nn.Linear(1000, 500)
         self.relu1 = nn.ReLU()
         # second layer
-        self.fc2 = nn.Linear(500, 100)
+        self.fc2 = nn.Linear(500, 1000)
         self.relu2 = nn.ReLU()
 
     def forward(self, t, T):
         # positional number to be used for positional encoding
+        device = 'cpu'
+        t = t.to(device)
+        T = T.to(device)
         dec = int((t / T) * 1000)  # should be 3-digit number
         dec = torch.tensor(dec).to(device)
         pos_vec = torch.zeros(1000).to(device)
-        pos_vec[dec] = 1.0
-        x = self.relu1(self.fc1(pos_vec))
+        fill = torch.tensor(1.0).to(device)
+        pos_vec[dec] = fill
+        x = self.relu1(self.fc1(pos_vec)).to(device)
         x = self.relu2(self.fc2(x))
         return x
 
@@ -84,27 +91,18 @@ class diffusion_vsr(nn.Module):
         # positional encoding network
         self.positional_encoder = positional_encoder().to(device)
         # model layers
-        self.avgpool1 = nn.AvgPool1d(kernel_size=226436,
-                                     stride=1,
-                                     padding=1)
-        self.conv1 = nn.Conv2d(in_channels=3,
-                               out_channels=3,
-                               kernel_size=3,
-                               stride=1,
-                               padding=1)
+        self.fc1 = nn.Linear(67576, 16000)
         self.relu1 = nn.ReLU()
-        self.conv2 = nn.Conv2d(in_channels=3,
-                               out_channels=3,
-                               kernel_size=3,
-                               stride=1,
-                               padding=1)
+        self.fc2 = nn.Linear(16000, 4096)
         self.relu2 = nn.ReLU()
-        self.conv3 = nn.Conv2d(in_channels=3,
-                               out_channels=3,
-                               kernel_size=3,
-                               stride=1,
-                               padding=1)
+
+        self.conv1 = nn.Conv2d(1, 1, kernel_size=3, padding=1)
         self.relu3 = nn.ReLU()
+        self.conv2 = nn.Conv2d(1, 1, kernel_size=3, padding=1)
+        self.relu4 = nn.ReLU()
+        # Extra parameter for weighted concatenation
+        self.w1 = nn.Parameter(torch.randn(1), requires_grad=True)
+        self.w2 = nn.Parameter(torch.randn(1), requires_grad=True)
 
     def cosine_beta_schedule(self, timesteps, s):
         """
@@ -115,8 +113,8 @@ class diffusion_vsr(nn.Module):
         alphas_cumprod = torch.cos(((x / timesteps) + s) / (1 + s) * torch.pi * 0.5) ** 2
         alphas_cumprod = alphas_cumprod / alphas_cumprod[0]
         betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
-        self.beta_sch = torch.clip(betas, 0.0001, 0.9999)
-        self.alpha_bar_sch = alphas_cumprod
+        self.beta_sch = torch.clip(betas, 0.01, 0.99)
+        self.alpha_bar_sch = torch.clip(alphas_cumprod, 0.01, 0.99)
 
     def add_noise(self, img, t):
         """
@@ -130,9 +128,12 @@ class diffusion_vsr(nn.Module):
         Tensor: The noised image tensor.
         """
         device = img.device
-        scaled_img = img * self.alpha_bar_sch[t]
-        random_noise = torch.randn_like(img)
-        noisy_img = scaled_img + (torch.sqrt(1 - self.alpha_bar_sch[t])) * random_noise
+        scaled_img = img * torch.sqrt(self.alpha_bar_sch[t]).to(device)
+
+        mu = 0.0
+        sig2 = float(1.0-self.alpha_bar_sch[t])
+        random_noise = torch.empty(1,64,64).normal_(mean=mu, std=sig2).to(device)
+        noisy_img = scaled_img + (torch.sqrt(1 - self.alpha_bar_sch[t])).to(device) * random_noise
         return noisy_img
 
     def calc_train_steps(self):
@@ -145,7 +146,7 @@ class diffusion_vsr(nn.Module):
 
     def full_inference(self, lr_imgs):
         self.calc_test_steps()
-        hr_noise = torch.randn((3,720,1280), requires_grad=False).to(device)
+        hr_noise = torch.randn((1, 64, 64), requires_grad=False).to(device)
         for t in range(self.T):
             hr_noise = self.forward(hr_noise, lr_imgs, t)
         return hr_noise
@@ -154,22 +155,23 @@ class diffusion_vsr(nn.Module):
         # forward actual predicts the t-1 noise image
         norm_hr_noise = hr_noise / 255.0
         norm_lr_seq = lr_seq / 255.0
-        hr_features = self.hr_net(norm_hr_noise).flatten()  # output size is 115200
+        hr_features = self.hr_net(norm_hr_noise).flatten()  # output size is 17424
         # print(hr_features.size())
-        lr_features = self.lr_net(norm_lr_seq).flatten()  # output size is 28160
+        lr_features = self.lr_net(norm_lr_seq).flatten()  # output size is 49152
         # print(lr_features.size())
-        pos_vec = self.positional_encoder(t, self.T)  # output size is 100
-        x = torch.concat((hr_features, lr_features, pos_vec), dim=0)  # output size is 3670532
+        pos_vec = self.positional_encoder(t, self.T)  # output size is 1000
+        x = torch.concat((hr_features, lr_features, pos_vec), dim=0)  # output size is 67576
         # print(x.size())
-        x = x.reshape(4, 917633)
-        x = self.relu1(self.avgpool1(x))  # output is 3x720x1280, same as hr_img
+        x = self.relu1(self.fc1(x))    # output 16000
+        x = self.relu2(self.fc2(x))    # output 4096
         # print(x.size())
-        x = x.reshape(3, 720, 1280)
-        x = (0.5 * x) + (0.5 * norm_hr_noise)
-        # perform convolutions
-        x = self.relu1(self.conv1(x))
-        x = self.relu2(self.conv2(x))
-        x = self.relu3(self.conv3(x))
+        x = x.reshape(1, 64, 64)
+
+        # Perform convolution
+        x = self.relu3(self.conv1(x))
+        x = self.relu4(self.conv2(x))
+        # print(x.size(), norm_hr_noise.size())
+        x = (self.w1 * x) + (self.w2 * norm_hr_noise)
         x = torch.clamp(x, 0, 1)
         x = 255.0 * x
         return x
