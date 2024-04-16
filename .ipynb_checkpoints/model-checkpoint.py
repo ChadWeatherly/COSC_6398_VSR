@@ -66,9 +66,9 @@ class lr_feature_extractor(nn.Module):
     def forward(self, x):
         # Pass the input through the convolutional layers with elu activations
         x = self.elu1(self.pool1(self.conv1(x)))
-        # print(x.size())
+        print(x.size())
         x = self.elu2(self.conv2(x))
-        # print(x.size())
+        print(x.size())
         # x = self.elu3(self.pool3(self.conv3(x)))
         return x
 
@@ -87,23 +87,18 @@ class reconstructor(nn.Module):
         self.conv2 = nn.Conv2d(3, 1, kernel_size=3,
                                stride=1, padding=1, device=device)
         self.relu2 = nn.ReLU()
-        self.fc = nn.Linear(8192, 64*64, device=device)
+        self.fc = nn.Linear(64*64, 64*64)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, lr_imgs):
-        # print(lr_imgs.size())
-        lr_imgs = lr_imgs.float().to(self.device)
+        print(lr_imgs.size())
         lr_imgs = self.lr(lr_imgs) # (5, 32, 16, 16)
-        # print(lr_imgs.size())
-        lr_imgs = torch.flatten(lr_imgs, 2, -1) # size is (5, 32, 256)
+        print(lr_imgs.size())
+        lr_imgs = torch.flatten(lr_imgs, 2, -1) # size is (5, 64, 64)
 
         x = self.relu1(self.conv1(lr_imgs))
-        # print(x.size())
-        x = self.relu2(self.conv2(x)) # output is 8192
-        print(x.size())
-        # x = x.flatten()
+        x = self.relu2(self.conv2(x)).flatten()
         x = self.sigmoid(self.fc(x)).reshape((1, 64, 64))
-        # print(x.size())
         return x
 
 ### Had to scrap everything after this, as we didn't have enough time to train
