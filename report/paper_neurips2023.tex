@@ -107,15 +107,15 @@ Frustratingly, the training process is little emphasized in current SOTA VSR mod
 
 \begin{equation}
     SSIM(\widetilde{I}, \hat{I}) = \frac{
-        2 \mu_{\hat{I}} \mu_{\wildtilde{I}} + k_1}{
+        2 \mu_{\hat{I}} \mu_{\widtilde{I}} + k_1}{
         \mu^2_{\hat{I}} + \mu^2_{\widetilde{I}} + k_1}
         \cdot
         \frac{
-        2 \sigma_{\hat{I} \wildtilde{I}} + k_2
+        2 \sigma_{\hat{I} \widtilde{I}} + k_2
         }{ \sigma^2_{\hat{I}} + \sigma^2_{\widetilde{I}} + k_2}
 \end{equation}
 
-where \(\mu_{\wildtilde{I} / \hat{I}}\) and \(\sigma_{\wildtilde{I} / \hat{I}}\) are the mean and standard deviation, respectively, of image \(\wildtilde{I}\) / \(\hat{I}\), \(\sigma_{\hat{I} \wildtilde{I}}\) is the covariance of the two images, and \(k_1\) and \(k_2\) are constants, usually set to 0.01 and 0.03, respectively.
+where \(\mu_{\widetilde{I}} / \mu_{\hat{I}}\) and \(\sigma_{\widetilde{I}} / \sigma_{\hat{I}}\) are the mean and standard deviation, respectively, of image \(\widetilde{I}\) / \(\hat{I}\), \(\sigma_{\hat{I} \widetilde{I}}\) is the covariance of the two images, and \(k_1\) and \(k_2\) are constants, usually set to 0.01 and 0.03, respectively.
 
 \begin{equation}
     PSNR(\widetilde{I}, \hat{I}) = 10*log_{10} \left( \frac{L^2}{MSE ( \widetilde{I}, \hat{I} )} \right)
@@ -162,9 +162,23 @@ Due to the technical and time constraints of a class project, we propose to crea
 
 \subsection{Training}
 
-The novelty of our approach is found in the training process. We trained two versions of the model architecture (Fig. 1). Model 1 was trained on a perceptual loss metric (PL, Eq. 5), as proposed by Johnson et al. \cite{johnson_perceptual_2016}. Model 2 was trained on the MSE (Eq.3).
+The novelty of our approach is found in the training process. We trained two versions of the model architecture (Fig. 1). Model 1 was trained on a perceptual loss metric (Eq. 5), as proposed by Johnson et al. \cite{johnson_perceptual_2016}. Our implementation of perceptual loss was done with the VGG-19 model \cite{simonyan_very_2015}, where activations were computed by passing each image (the ground truth and predicted HR images) and extracting the values from each ReLU activation. Model 2 was trained on the MSE (Eq.3) difference between the two image pixel values. Both models were trained on 50 epochs using the Adam optimizer. The learning rate was adjusted as epochs were passed: 0.0001 at start, 0.00001 after 5 epochs, and 0.000001 after 15 epochs.
+
+\begin{equation}
+    Perceptual \hspace{3} Loss(\hat{I}, \widetilde{I}) = \sum_{a=1}^N \Biggl[ \frac{1}{T} \sum_{t=1}^T \big| VGG_{a,t}(\hat{I}) - VGG_{a,t}(\widetilde{I}) \big| \Biggr]
+\end{equation}
+
+for \(T\) values in activation layers \(A\), where \(VGG_{a,t}(I)\) is the ReLU output value \(t\) from activation layer \(a\) when image \(I\) is passed through. 
 
 \section{Results}
+
+Figures 2 and 3 show how the loss functions converged for each of the 
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1.0\linewidth]{model_architecture.png}
+    \caption{Model Architecture}
+\end{figure}
 
 \section{Discussion}
 
