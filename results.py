@@ -71,7 +71,7 @@ def psnr(img1, img2):
     return (10 * torch.log10(255.0**2 / mse))
 
 # Load data
-all_data = torchvision.datasets.MovingMNIST(root='./', split=None,
+data = torchvision.datasets.MovingMNIST(root='./', split=None,
                                         split_ratio=10, download=True)
 train_data = all_data[0:8000].to('cpu')      # 80% for train
 test_data = all_data[8000:10001].to('cpu')    # 20% for test
@@ -92,46 +92,39 @@ train_mse_loss = old_model[1]
 test_mse_loss = old_model[2]
 
 # Get avg. SSIM and PSNR
-for data in [all_data, train_data, test_data]:
-    if len(data) > 8005:
-        d = 'all'
-    elif len(data) > 2005:
-        d = 'train'
-    else:
-        d = 'test'
-    for metric in ['ssim', 'psnr']:
-        for loss in ['mse', 'pq']:
-            err = 0
-            for idx in range(len(data)):
-                video = data[idx]
-                for frame in range(2, video.shape[0]-2):
-                    hr_img = video[frame].float().to(device)
-                    # print(hr_img.shape)
-                    lr_imgs = video[frame - 2:frame + 3]
-                    lr_imgs = [transform_image(img) for img in lr_imgs]
-                    lr_imgs = torch.stack(lr_imgs, dim=0).to(device)  # permuted to have channel first
-                    lr_imgs = lr_imgs.float()
-                    # print(lr_imgs.shape)
+for metric in ['ssim', 'psnr']:
+    for loss in ['mse', 'pq']:
+        err = 0
+        for idx in range(len(data)):
+            video = data[idx]
+            for frame in range(2, video.shape[0]-2):
+                hr_img = video[frame].float().to(device)
+                # print(hr_img.shape)
+                lr_imgs = video[frame - 2:frame + 3]
+                lr_imgs = [transform_image(img) for img in lr_imgs]
+                lr_imgs = torch.stack(lr_imgs, dim=0).to(device)  # permuted to have channel first
+                lr_imgs = lr_imgs.float()
+                # print(lr_imgs.shape)
 
-                    # print(idx, frame, lr_imgs.shape)
-                    with torch.no_grad():
-                        if loss == 'mse':
-                            hr_pred = mse_recon_model(lr_imgs)
-                        elif loss == 'pq':
-                            hr_pred = pq_recon_model(lr_imgs)
-                        # print(hr_img.shape, hr_pred.shape)
-                        if metric == 'ssim':
-                            err += ssim(hr_pred, hr_img)
-                        elif metric == 'psnr':
-                            err += psnr(hr_pred, hr_img)
+                # print(idx, frame, lr_imgs.shape)
+                with torch.no_grad():
+                    if loss == 'mse':
+                        hr_pred = mse_recon_model(lr_imgs)
+                    elif loss == 'pq':
+                        hr_pred = pq_recon_model(lr_imgs)
+                    # print(hr_img.shape, hr_pred.shape)
+                    if metric == 'ssim':
+                        err += ssim(hr_pred, hr_img)
+                    elif metric == 'psnr':
+                        err += psnr(hr_pred, hr_img)
 
-                    del hr_img, lr_imgs, hr_pred
+                del hr_img, lr_imgs, hr_pred
 
-                # if idx % 1000 == 0:
-                #     print(metric, loss, idx)
+            # if idx % 1000 == 0:
+            #     print(metric, loss, idx)
 
-            err = err / len(data)
-            print(f'{loss} : {d} : {metric} : {err}')
+        err = err / len(data)
+        print(f'{loss} : {metric} : {err}')
 
 # mse : ssim : 0.0023825119715183973
 # pq : ssim : 0.00016504668747074902
