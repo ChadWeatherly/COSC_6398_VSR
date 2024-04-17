@@ -100,8 +100,8 @@ class reconstructor(nn.Module):
         x = self.relu1(self.conv1(lr_imgs))
         # print(x.size())
         x = self.relu2(self.conv2(x)) # output is 8192
-        print(x.size())
-        # x = x.flatten()
+        # print(x.size())
+        x = x.flatten()
         x = self.sigmoid(self.fc(x)).reshape((1, 64, 64))
         # print(x.size())
         return x
