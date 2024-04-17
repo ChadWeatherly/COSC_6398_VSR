@@ -1,7 +1,6 @@
 
 \documentclass{article}
 
-
 \usepackage[utf8]{inputenc} % allow utf-8 input
 \usepackage[    % For using .bib file
 backend=biber,
@@ -43,6 +42,7 @@ sorting=ynt
 \usepackage{microtype}      % microtypography
 \usepackage{xcolor}         % colors
 \usepackage{graphicx}
+\usepackage{subcaption}
 
 
 \title{Comparing Perceptual Quality vs. Pixel Loss on a Simple Video Super-Resolution Model}
@@ -92,7 +92,7 @@ sorting=ynt
 \maketitle
 
 \begin{abstract}
- Needs to be completed last
+ With the ongoing need for high-fidelity videos in different areas of entertainment, Video Super-Resolution (VSR) has become a pivotal area of research, transcending its roots in gaming to broader applications such as medical imaging and surveillance. This paper presents a comparative study of training a simple VSR model utilizing a traditional pixel-loss function against a model of the same architecture trained on a perceptual loss function. While most state-of-the-art approaches prioritize architectural innovations, our research emphasizes the training process to enhance perceptual quality, a metric that better aligns with human visual perception than pixel accuracy. Despite the simplicity of the model and inherent limitations of the VSR task, our findings illustrate that the perceptual loss-trained model produces more visually coherent images than its MSE counterpart, even though traditional metrics like Peak Signal-to-Noise Ratio (PSNR) and Structural Similarity Index Measure (SSIM) showed similar or slightly better values for the MSE model. This discrepancy highlights the inadequacy of PSNR and SSIM as sole arbiters of image quality. Our study paves the way for future explorations into complex models that could benefit from a mixed approach to loss functions, potentially leading to superior VSR techniques. This project represents a collective effort to reconceptualize the training of VSR models, advocating for a paradigm shift towards perceptual quality-centric methods.
 \end{abstract}
 
 \section{Introduction}
@@ -149,7 +149,7 @@ Due to the technical and time constraints of a class project, we propose to crea
 
 \begin{figure}
     \centering
-    \includegraphics[width=1.0\linewidth]{model_architecture.png}
+    \includegraphics[width=1.0\linewidth]{report/figures/model_architecture.png}
     \caption{Model Architecture}
 \end{figure}
 
@@ -172,15 +172,46 @@ for \(T\) values in activation layers \(A\), where \(VGG_{a,t}(I)\) is the ReLU 
 
 \section{Results}
 
-Figures 2 and 3 show how the loss functions converged for each of the 
+Figures 2 and 3 show how the loss functions converged for each of the functions. As can be seen, perceptual loss model (PLM) was able to somewhat train and converge, while the MSE Model (MSEM) didn't seem to find any sort of consensus, regardless of learning rate. Interestingly, both the PSNR and SSIM values were similar for each of the two model types (Table 1), with the MSEM performing slightly better in both metrics (although both models performed poorly compared to SOTA methods). Finally, Figure 4 shows a sample of how the models' predictions actually looked.
+
+\begin{table}
+  \caption{Model Results}
+  \centering
+  \begin{tabular}{lll}
+    \toprule
+    \cmidrule{1-3}
+    Model &  PSNR & SSIM  \\
+    \midrule
+    PLM & 83.24 & \hspace{3} 1.650e-4 \\
+    MSEM & \textbf{83.78 }& \textbf{23.825e-4} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \begin{figure}
     \centering
-    \includegraphics[width=1.0\linewidth]{model_architecture.png}
-    \caption{Model Architecture}
+    \includegraphics[width=0.65\textwidth]{report/figures/pq_loss.png}
+    \caption{Perceptual Loss across Epochs}
+\end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.65\textwidth]{report/figures/mse_loss.png}
+    \caption{Perceptual Loss across Epochs}
+\end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.85\textwidth]{report/figures/predictions.png}
+    \caption{Model Final Predictions}
 \end{figure}
 
+
 \section{Discussion}
+
+Given the simplicity of the model and the difficulty in the VSR task, it's no shock that both models performed poorly. Our model didn't take temporal information into account much, besides concatenating all vectors together, but in their failures, some interesting distinctions can be made. It would appear that the PLM was able to actually learn a little, and the model was able to produce forms that somewhat resemble their ground-truth counterparts. This might signal the fact that the PLM learned lower-level features, with the low complexity of our model unable to fully capture high-level details. To a human observer, the PLM-predicted images at least capture some information contained in the LR images, while the MSEM-predicted images are no more than smatterings of pixels. This also proves the initial assertion that PSNR and SSIM do not fully capture an image's quality, as the MSEM performed slightly better (higher is better for both SSIM and PSNR) in both metrics. We presume that given a more complex model, the differences in both loss functions might become even more apparent. In the future, it would be fascinating to see how comparing perceptual loss to other loss functions might work, or even attempting to strike a balance, with a complex model that is trained on a combination of loss functions in order to generate high-fidelity super-resolved images and videos. 
+
+\subsection{Contributions}
+
+This project was done with equal effort from all three team members.
 
 \printbibliography % Prints all references cited using \cite{} in alphabetical order
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
